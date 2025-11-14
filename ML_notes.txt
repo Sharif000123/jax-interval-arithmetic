@@ -1,0 +1,23 @@
+Bias:
+Der Mangel an Fähigkeit, eines Machine Learning Algorithmusses, die Beziehung/das Verhältnis zwischen Werten zu bestimmen/finden.
+Bsp.:
+Wenn also Punkte verteil sind, und die ungefähr immer bei sqrt(x) liegen, so kann eine gerade Linie (Gerade), wie bei Linear Regression die Beziehung zwischen Werten nicht erfassen, der Bias ist also sehr hoch.
+Wenn nun aber eine sqrt(x) funktion genutzt wird, ist die Beziehung viel besser erfasst, und der Algorithmus der eine sqrt(x) funktion erstellt hat einen niedrigen Bias.
+-> Eine Funktion die also hohen Bias hat, wird zwar nicht immer perfekte Ergebnisse bringen, aber sie kann gute Ergenbisse konsisten liefern, also die optimalere Wahl für verschiedene Datasets und konsistent gute Ergebnisse.
+
+Variance:
+Der Unterschied zwischen dem Trainings- und Testingset wird Variance gennant.
+Bsp.:
+Wenn also das Trainingsset dem Testingset sehr verschieden ist, so die Variance sehr hoch.
+
+Overfitting:
+When the function fits the testingset too well, we call that overfitting, the Bias is low, but therefore the variance might be very high.
+Falls eine Funktion den Werten eines Trainingsset zu nah liegt, so nennt man das Overfitting, der Bias ist zwar sehr gering, aber die Funktion ist zu spezifisch und passt daher eventuell schlechter auf andere Sets wie z.B. das Testingset, hier ist also die Variance dann sehr hoch, da sich verschiedene Trainingssets sehr unterscheiden.
+
+-> Das Beste ist es die goldene Mitte zwischen einem sehr einfachen Modell/Funktion zu finden, und einem sehr Komplexen. Methoden dafür sind u.a. Regularisation, Boosting, Bagging.
+
+Cross Validation:
+Bei Cross Validation geht es darum ein Dataset in Teile zu unterteilen und dann das Modell mit allen Teilen zu trainieren außer einem, und dann zu schauen wie gut es dann beim Test den Teil vorhersieht auf den er nicht trainiert wurde. Nun wiederholt man das ganze, und lässt bei jeder Runde ein anderes Teil beim Training weg und schaut dann wie dieses dann vorhergesagt wird. Am Ende der Durchläufe, wenn alle Runden fertig sind, berechnet man die durchschnittliche Genauigkeit es Modells das verwendet wird, und dann kann man die selbe Prozedur des patitionierten Testens mit einem anderen Modell machen, oder mit mehr. Letztendlich vergleicht man dann alle Durchschnittsgenauigkeiten und kann dann bestimmen welches Modell am präzisesten ist und am genausten, beim vorhersagen des Datentyps. Cross Validation bietet also eine Methodik zwischen verschiedenen Modellen zu entscheiden welches Modell am geeignetsten ist.
+
+
+Multiple Regression:

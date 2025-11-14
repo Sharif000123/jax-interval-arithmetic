@@ -1,0 +1,22 @@
+Supervised Learning:
+Tell the machine what is what, in training.
+
+Unsupervised Learning:
+Receives unlabeled data, and finds patterns etc itself.
+
+´f`(x) oder f^(x) oder f hat of x:
+Ist die abgeschätzte Funktion, die f(x) so ähnlich wie möglich sein soll.
+-> Heißt f^(x) ist eine Funktion die Anhand von Daten generiert wurde, und dessen Ziel es ist f(x) so stark wie möglich zu ähneln. Es gilt also die differenz von f(x) und f^(x) so stark wie möglich zu reduzieren. Bzw. [f(x)-f^(x)]^2 + Var(€).
+
+Da bei einer Schätzung, der Berechnung der Funktion, möglicherweise kein einziger Wert genau auf dem Punkt liegt von dem wir den Durchschnitt berechnen wollen, nutzen wir die Neighborhood Funktion _N´(x). Die Neighbourhood Funktion erweitert den Radius der erfassten Punkte zur Berechnung des Durchschnitts eines Punktes, indem der Radius auf der x-Achse, also das Intervall, links und rechts erweitert werden.
+
+Ein Problem der Neighbourhood Funktion ist, je höher die Dimension der Datenstruktur, desto weiter entfernt sind alle Punkte von einannder. Das bedeutet, dass die Punkte weniger lokal sind, und die Intervalle der Neighbourhood Funktion stark wachsen, je höher die Dimension ist.
+
+Eine Varianz Funktion beschreibt wie "divers" die werte an einem gegebenen punkt x sind, also wie weit die Punkte bei x von dem durchschnitt entfernt sind.
+
+Varianz in ML bedreutet wie stark die gegebenen Datensätze die Funktion/Algorithmus durch das training verändern.
+-> Varianz beschreibt also die Empfindlichkeit eines Modells beim Trainieren, wie stark ein Modell sich ändert wenn es mit einem Datensatz trainiert wird
+
+Classification technique can be that checking for a certain x, radius or neighbourhood at x, how many points belong to class 1 and how many belong to class 2, and assign that x to the majority class.
+
+Für den K-Nearest Neighbour Classifier, ist es so, dass wir mehr Fehler bekommen, je größer K wird, aber für ganz kleine K's ist der Fehler auch etwas schlechter als für spätere K's. Optimal sind kleine K's die aber nicht zu klein sind, und diese sind am nächsten zum Bayes Error, was den besten Wert bekommt.

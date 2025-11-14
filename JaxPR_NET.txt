@@ -1,0 +1,307 @@
+jaxPR = jax.make_jaxpr(Net)(init_params(jax.random.PRNGKey(0)), jnp.zeros((1, 32, 32, 3)))
+print(jaxPR)
+
+{ lambda ; a:f32[6] b:f32[5,5,3,6] c:f32[16] d:f32[5,5,6,16] e:f32[120] f:f32[400,120]
+    g:f32[84] h:f32[120,84] i:f32[10] j:f32[84,10] k:f32[1,32,32,3]. let
+    l:f32[1,10] = pjit[
+      name=Net
+      jaxpr={ lambda ; a:f32[6] b:f32[5,5,3,6] c:f32[16] d:f32[5,5,6,16] e:f32[120]
+          f:f32[400,120] g:f32[84] h:f32[120,84] i:f32[10] j:f32[84,10] k:f32[1,32,32,3]. let
+          m:f32[1,28,28,6] = conv_general_dilated[
+            batch_group_count=1
+            dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2))
+            feature_group_count=1
+            lhs_dilation=(1, 1)
+            padding=((0, 0), (0, 0))
+            precision=None
+            preferred_element_type=None
+            rhs_dilation=(1, 1)
+            window_strides=(1, 1)
+          ] k b
+          n:f32[1,28,28,6] = pjit[
+            name=prelu
+            jaxpr={ lambda ; m:f32[1,28,28,6]. let
+                o:bool[1,28,28,6] = gt m 0.0
+                p:f32[1,28,28,6] = mul 0.10000000149011612 m
+                n:f32[1,28,28,6] = pjit[
+                  name=_where
+                  jaxpr={ lambda ; o:bool[1,28,28,6] m:f32[1,28,28,6] p:f32[1,28,28,6]. let
+                      n:f32[1,28,28,6] = select_n o p m
+                    in (n,) }
+                ] o m p
+              in (n,) }
+          ] m
+          q:f32[1,14,14,6] = pjit[
+            name=max_pool
+            jaxpr={ lambda ; n:f32[1,28,28,6]. let
+                q:f32[1,14,14,6] = reduce_window_max[
+                  base_dilation=(1, 1, 1, 1)
+                  padding=((0, 0), (0, 0), (0, 0), (0, 0))
+                  window_dilation=(1, 1, 1, 1)
+                  window_dimensions=(1, 2, 2, 1)
+                  window_strides=(1, 2, 2, 1)
+                ] n
+              in (q,) }
+          ] n
+          r:f32[1,10,10,16] = conv_general_dilated[
+            batch_group_count=1
+            dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2))
+            feature_group_count=1
+            lhs_dilation=(1, 1)
+            padding=((0, 0), (0, 0))
+            precision=None
+            preferred_element_type=None
+            rhs_dilation=(1, 1)
+            window_strides=(1, 1)
+          ] q d
+          s:f32[1,1,1,16] = broadcast_in_dim[
+            broadcast_dimensions=(3,)
+            shape=(1, 1, 1, 16)
+            sharding=None
+          ] c
+          t:f32[1,10,10,16] = add r s
+          u:f32[1,10,10,16] = pjit[
+            name=prelu
+            jaxpr={ lambda ; t:f32[1,10,10,16]. let
+                v:bool[1,10,10,16] = gt t 0.0
+                w:f32[1,10,10,16] = mul 0.10000000149011612 t
+                u:f32[1,10,10,16] = pjit[
+                  name=_where
+                  jaxpr={ lambda ; v:bool[1,10,10,16] t:f32[1,10,10,16] w:f32[1,10,10,16]. let
+                      u:f32[1,10,10,16] = select_n v w t
+                    in (u,) }
+                ] v t w
+              in (u,) }
+          ] t
+          x:f32[1,5,5,16] = pjit[
+            name=max_pool
+            jaxpr={ lambda ; u:f32[1,10,10,16]. let
+                x:f32[1,5,5,16] = reduce_window_max[
+                  base_dilation=(1, 1, 1, 1)
+                  padding=((0, 0), (0, 0), (0, 0), (0, 0))
+                  window_dilation=(1, 1, 1, 1)
+                  window_dimensions=(1, 2, 2, 1)
+                  window_strides=(1, 2, 2, 1)
+                ] u
+              in (x,) }
+          ] u
+          y:f32[1,400] = reshape[
+            dimensions=None
+            new_sizes=(1, 400)
+            sharding=None
+          ] x
+          z:f32[1,120] = dot_general[
+            dimension_numbers=(([1], [0]), ([], []))
+            preferred_element_type=float32
+          ] y f
+          ba:f32[1,120] = broadcast_in_dim[
+            broadcast_dimensions=(1,)
+            shape=(1, 120)
+            sharding=None
+          ] e
+          bb:f32[1,120] = add z ba
+          bc:f32[1,120] = pjit[
+            name=prelu
+            jaxpr={ lambda ; bb:f32[1,120]. let
+                bd:bool[1,120] = gt bb 0.0
+                be:f32[1,120] = mul 0.10000000149011612 bb
+                bc:f32[1,120] = pjit[
+                  name=_where
+                  jaxpr={ lambda ; bd:bool[1,120] bb:f32[1,120] be:f32[1,120]. let
+                      bc:f32[1,120] = select_n bd be bb
+                    in (bc,) }
+                ] bd bb be
+              in (bc,) }
+          ] bb
+          bf:f32[1,84] = dot_general[
+            dimension_numbers=(([1], [0]), ([], []))
+            preferred_element_type=float32
+          ] bc h
+          bg:f32[1,84] = broadcast_in_dim[
+            broadcast_dimensions=(1,)
+            shape=(1, 84)
+            sharding=None
+          ] g
+          bh:f32[1,84] = add bf bg
+          bi:f32[1,84] = pjit[
+            name=prelu
+            jaxpr={ lambda ; bh:f32[1,84]. let
+                bj:bool[1,84] = gt bh 0.0
+                bk:f32[1,84] = mul 0.10000000149011612 bh
+                bi:f32[1,84] = pjit[
+                  name=_where
+                  jaxpr={ lambda ; bj:bool[1,84] bh:f32[1,84] bk:f32[1,84]. let
+                      bi:f32[1,84] = select_n bj bk bh
+                    in (bi,) }
+                ] bj bh bk
+              in (bi,) }
+          ] bh
+          bl:f32[1,10] = dot_general[
+            dimension_numbers=(([1], [0]), ([], []))
+            preferred_element_type=float32
+          ] bi j
+          bm:f32[1,10] = broadcast_in_dim[
+            broadcast_dimensions=(1,)
+            shape=(1, 10)
+            sharding=None
+          ] i
+          l:f32[1,10] = add bl bm
+        in (l,) }
+    ] a b c d e f g h i j k
+  in (l,) }
+
+
+  jaxpr = jax.make_jaxpr(Net)(params, images)
+  print(jaxpr)
+
+  { lambda ; a:f32[6] b:f32[5,5,3,6] c:f32[16] d:f32[5,5,6,16] e:f32[120] f:f32[400,120]
+    g:f32[84] h:f32[120,84] i:f32[10] j:f32[84,10] k:f32[256,32,32,3]. let
+    l:f32[256,10] = pjit[
+      name=Net
+      jaxpr={ lambda ; a:f32[6] b:f32[5,5,3,6] c:f32[16] d:f32[5,5,6,16] e:f32[120]
+          f:f32[400,120] g:f32[84] h:f32[120,84] i:f32[10] j:f32[84,10] k:f32[256,32,32,3]. let
+          m:f32[256,28,28,6] = conv_general_dilated[
+            batch_group_count=1
+            dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2))
+            feature_group_count=1
+            lhs_dilation=(1, 1)
+            padding=((0, 0), (0, 0))
+            precision=None
+            preferred_element_type=None
+            rhs_dilation=(1, 1)
+            window_strides=(1, 1)
+          ] k b
+          n:f32[256,28,28,6] = pjit[
+            name=prelu
+            jaxpr={ lambda ; m:f32[256,28,28,6]. let
+                o:bool[256,28,28,6] = gt m 0.0
+                p:f32[256,28,28,6] = mul 0.10000000149011612 m
+                n:f32[256,28,28,6] = pjit[
+                  name=_where
+                  jaxpr={ lambda ; o:bool[256,28,28,6] m:f32[256,28,28,6] p:f32[256,28,28,6]. let
+                      n:f32[256,28,28,6] = select_n o p m
+                    in (n,) }
+                ] o m p
+              in (n,) }
+          ] m
+          q:f32[256,14,14,6] = pjit[
+            name=max_pool
+            jaxpr={ lambda ; n:f32[256,28,28,6]. let
+                q:f32[256,14,14,6] = reduce_window_max[
+                  base_dilation=(1, 1, 1, 1)
+                  padding=((0, 0), (0, 0), (0, 0), (0, 0))
+                  window_dilation=(1, 1, 1, 1)
+                  window_dimensions=(1, 2, 2, 1)
+                  window_strides=(1, 2, 2, 1)
+                ] n
+              in (q,) }
+          ] n
+          r:f32[256,10,10,16] = conv_general_dilated[
+            batch_group_count=1
+            dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2))
+            feature_group_count=1
+            lhs_dilation=(1, 1)
+            padding=((0, 0), (0, 0))
+            precision=None
+            preferred_element_type=None
+            rhs_dilation=(1, 1)
+            window_strides=(1, 1)
+          ] q d
+          s:f32[1,1,1,16] = broadcast_in_dim[
+            broadcast_dimensions=(3,)
+            shape=(1, 1, 1, 16)
+            sharding=None
+          ] c
+          t:f32[256,10,10,16] = add r s
+          u:f32[256,10,10,16] = pjit[
+            name=prelu
+            jaxpr={ lambda ; t:f32[256,10,10,16]. let
+                v:bool[256,10,10,16] = gt t 0.0
+                w:f32[256,10,10,16] = mul 0.10000000149011612 t
+                u:f32[256,10,10,16] = pjit[
+                  name=_where
+                  jaxpr={ lambda ; v:bool[256,10,10,16] t:f32[256,10,10,16] w:f32[256,10,10,16]. let
+                      u:f32[256,10,10,16] = select_n v w t
+                    in (u,) }
+                ] v t w
+              in (u,) }
+          ] t
+          x:f32[256,5,5,16] = pjit[
+            name=max_pool
+            jaxpr={ lambda ; u:f32[256,10,10,16]. let
+                x:f32[256,5,5,16] = reduce_window_max[
+                  base_dilation=(1, 1, 1, 1)
+                  padding=((0, 0), (0, 0), (0, 0), (0, 0))
+                  window_dilation=(1, 1, 1, 1)
+                  window_dimensions=(1, 2, 2, 1)
+                  window_strides=(1, 2, 2, 1)
+                ] u
+              in (x,) }
+          ] u
+          y:f32[256,400] = reshape[
+            dimensions=None
+            new_sizes=(256, 400)
+            sharding=None
+          ] x
+          z:f32[256,120] = dot_general[
+            dimension_numbers=(([1], [0]), ([], []))
+            preferred_element_type=float32
+          ] y f
+          ba:f32[1,120] = broadcast_in_dim[
+            broadcast_dimensions=(1,)
+            shape=(1, 120)
+            sharding=None
+          ] e
+          bb:f32[256,120] = add z ba
+          bc:f32[256,120] = pjit[
+            name=prelu
+            jaxpr={ lambda ; bb:f32[256,120]. let
+                bd:bool[256,120] = gt bb 0.0
+                be:f32[256,120] = mul 0.10000000149011612 bb
+                bc:f32[256,120] = pjit[
+                  name=_where
+                  jaxpr={ lambda ; bd:bool[256,120] bb:f32[256,120] be:f32[256,120]. let
+                      bc:f32[256,120] = select_n bd be bb
+                    in (bc,) }
+                ] bd bb be
+              in (bc,) }
+          ] bb
+          bf:f32[256,84] = dot_general[
+            dimension_numbers=(([1], [0]), ([], []))
+            preferred_element_type=float32
+          ] bc h
+          bg:f32[1,84] = broadcast_in_dim[
+            broadcast_dimensions=(1,)
+            shape=(1, 84)
+            sharding=None
+          ] g
+          bh:f32[256,84] = add bf bg
+          bi:f32[256,84] = pjit[
+            name=prelu
+            jaxpr={ lambda ; bh:f32[256,84]. let
+                bj:bool[256,84] = gt bh 0.0
+                bk:f32[256,84] = mul 0.10000000149011612 bh
+                bi:f32[256,84] = pjit[
+                  name=_where
+                  jaxpr={ lambda ; bj:bool[256,84] bh:f32[256,84] bk:f32[256,84]. let
+                      bi:f32[256,84] = select_n bj bk bh
+                    in (bi,) }
+                ] bj bh bk
+              in (bi,) }
+          ] bh
+          bl:f32[256,10] = dot_general[
+            dimension_numbers=(([1], [0]), ([], []))
+            preferred_element_type=float32
+          ] bi j
+          bm:f32[1,10] = broadcast_in_dim[
+            broadcast_dimensions=(1,)
+            shape=(1, 10)
+            sharding=None
+          ] i
+          l:f32[256,10] = add bl bm
+        in (l,) }
+    ] a b c d e f g h i j k
+  in (l,) }
+
+
+

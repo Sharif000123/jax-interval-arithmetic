@@ -1,0 +1,4 @@
+1. Unit tests -> Compare: Check if normal (non-Interval output, lies in Interval output)
+2. Load JaxPR and execute with my (interval) interpreter "jax_new_interpreter.py"
+
+(3. Implement: Con2D, Pooling(max/min,avg))

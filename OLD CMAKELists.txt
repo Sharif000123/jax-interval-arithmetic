@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.15)
+project(ffi_module LANGUAGES CXX)
+
+find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+find_package(nanobind CONFIG REQUIRED PATHS "D:/Work/ML Stuff/nanobind")
+find_package(boost CONFIG REQUIRED PATHS "D:/Work/ML Stuff/boost_1_88_0")
+
+nanobind_add_module(ffi_module ../ffi.cpp)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
+

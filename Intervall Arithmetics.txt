@@ -1,0 +1,24 @@
+X = [x1,x2]
+Y = [y1,y2]
+
+Addition:
+X+Y = [x1+y1,x2+y2]
+
+Subtraction:
+X+Y = [x1-y2,x2-y1]
+
+Multiplication:
+X*Y = [min(x1*y1,x2*y2,x1*y2,x2*y1),max(x1*y1,x1*y2,x2*y1,x2*y2)]
+
+Division:
+(X/Y Voraussetzung das 0 \€ Y)
+X/Y=[min(x1/y1,x1/y2,x2*y1,x2*y2),max(x1/y1,x1*y2,x2*y1,x2*y2)]
+
+
+x±y:
+[x-y,x+y]
+
+Outward rounding:
+Left value is rounded down (floor()), and right value is rounded up (ceiling()), on the last digits of each of the numbers ("at the last digit carried" p.22)
+[1.346,2.434] -> [1.35,2.43]
+

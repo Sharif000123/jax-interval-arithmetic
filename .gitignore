@@ -1,0 +1,10 @@
+nanobind/*
+xla/*
+__pycache__/*
+boost_1_88_0/*
+build/*
+data/*
+jax/*
+output/*
+my_extension/build/*
+my_extension/output/*
