@@ -1,0 +1,16 @@
+[project]
+name = "jax-interval-arithmetic"
+version = "0.1.0"
+authors = [
+    { name = "Sharif Wurz", email = "sharif.wurz@uni-konstanz.de" }
+    { name = "David Boetius", email = "david.boetius@uni-konstanz.de" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "jax == 0.5.2"
+]
+
+[build-system]
+requires = ["uv_build>=0.8.5,<0.9.0"]
+build-backend = "uv_build"
+
