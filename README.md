@@ -5,3 +5,6 @@ A JAX interpreter that replaces numeric execution with interval arithmetic. The 
 Other repositories needed:
 C++ Boost Interval Arithmetic Library "boost_1_88_0",
 Nanobind (C++ binding for C++ Boost usage)
+
+
+Main program is make_jaxpr.py in the formalax folder.
