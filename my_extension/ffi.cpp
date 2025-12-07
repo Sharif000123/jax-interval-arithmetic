@@ -46,27 +46,151 @@ IntervalMatrix matrixMult(const IntervalMatrix &A, const IntervalMatrix &B)
         C[i][j] += A[i][k] * B[k][j];
   return C;
 }
-
-IntervalMatrix matrixMultElementwise(const IntervalMatrix &A, const IntervalMatrix &B)
+IntervalMatrix matrixDiv(const IntervalMatrix &A, const Interval &y)
 {
-  if (A.empty() || B.empty() || A[0].empty() || B[0].empty())
+  if (A.empty() || A[0].empty())
   {
     throw std::invalid_argument("Input matrices cannot be empty.");
   }
-  if (A[0].size() != B[0].size() || A.size() != B.size())
-  {
-    std::ostringstream oss;
-    oss << "Incompatable matrix dimensions for elementwise mult. A rows: " << A.size() << "B rows: " << B.size();
-    throw std::invalid_argument(oss.str());
-  }
 
-  size_t n = A.size();
-  IntervalMatrix C(n, std::vector<Interval>(n, Interval(0.0, 0.0)));
+  size_t n = A.size(), m = A[0].size();
+  IntervalMatrix C(n, std::vector<Interval>(m, Interval(0.0, 0.0)));
   for (size_t i = 0; i < n; ++i)
-    for (size_t j = 0; j < n; ++j)
-      C[i][j] = A[i][j] * B[i][j];
+    for (size_t j = 0; j < m; ++j)
+      C[i][j] += A[i][j] / y;
   return C;
 }
+
+IntervalMatrix matrixMultElementwise(const IntervalMatrix &A, const IntervalMatrix &B)
+{
+  size_t a_rows = A.size(), a_cols = A[0].size();
+  size_t b_rows = B.size(), b_cols = B[0].size();
+  if (a_rows == 0 || a_cols == 0 || b_rows == 0 || b_cols == 0) // checking empty matrix
+  {
+    throw std::invalid_argument("Input contains at least one empty matrix.");
+  }
+  if (a_cols != b_cols)
+  {
+    throw std::invalid_argument("Matrices must have same column numbers");
+  }
+  if (b_rows > a_rows)
+  {
+    throw std::invalid_argument("Matrix b must have equal or less rows than matrix a");
+  }
+
+  IntervalMatrix C(a_rows, std::vector<Interval>(a_cols, Interval(0.0, 0.0)));
+
+  constexpr size_t VF = 4; // or 8, 16 depending on your arch
+  for (size_t i = 0; i < a_rows; ++i)
+  {
+    size_t j = 0, b_i = i % b_rows;
+    // process full blocks
+    for (; j + VF <= a_cols; j += VF)
+    {
+      // Load blocks
+      for (size_t k = 0; k < VF; ++k)
+      {
+        C[i][j + k] += A[i][j + k] * B[b_i][j + k];
+      }
+    }
+    // tail
+    for (; j < a_cols; ++j)
+    {
+      C[i][j] += A[i][j] * B[b_i][j];
+    }
+  }
+  return C;
+}
+IntervalMatrix matrixMultElementwise(const IntervalMatrix &A, const Interval &x)
+{
+  size_t a_rows = A.size(), a_cols = A[0].size();
+  if (a_rows == 0 || a_cols == 0) // checking empty matrix
+  {
+    throw std::invalid_argument("Matrix A is empty.");
+  }
+
+  IntervalMatrix C(a_rows, std::vector<Interval>(a_cols, Interval(0.0, 0.0)));
+
+  constexpr size_t VF = 4; // or 8, 16 depending on your arch
+  for (size_t i = 0; i < a_rows; ++i)
+  {
+    size_t j = 0;
+    // process full blocks
+    for (; j + VF <= a_cols; j += VF)
+    {
+      // Load blocks
+      for (size_t k = 0; k < VF; ++k)
+      {
+        C[i][j + k] += A[i][j + k] * x;
+      }
+    }
+    // tail
+    for (; j < a_cols; ++j)
+    {
+      C[i][j] += A[i][j] * x;
+    }
+  }
+  return C;
+}
+
+IntervalMatrix matrixPow(const IntervalMatrix &X, const int &y)
+{
+  size_t n = X.size(), m = X[0].size();
+  if (n == 0 || m == 0) // checking empty matrix
+  {
+    throw std::invalid_argument("Input matrix has wrong size.");
+  }
+
+  IntervalMatrix C(n, std::vector<Interval>(m, Interval(0.0, 0.0)));
+
+  for (size_t i = 0; i < n; i++)
+  {
+    for (size_t j = 0; j < m; j++)
+    {
+      // var = pow(matrixentry, exponent)
+      double pow_lb = std::pow(X[i][j].lower(), y);
+      double pow_ub = std::pow(X[i][j].upper(), y);
+
+      // determine min and max for correct interval structure
+      double x_min = std::min(pow_lb, pow_ub);
+      double x_max = std::max(pow_lb, pow_ub);
+
+      C[i][j] = Interval(x_min, x_max);
+    }
+  }
+  return C;
+}
+
+IntervalMatrix matrixAbs(const IntervalMatrix &X)
+{
+  size_t n = X.size(), m = X[0].size();
+  if (n == 0 || m == 0) // checking empty matrix
+  {
+    throw std::invalid_argument("Input matrix has wrong size.");
+  }
+
+  IntervalMatrix C(n, std::vector<Interval>(m, Interval(0.0, 0.0)));
+
+  for (size_t i = 0; i < n; i++)
+  {
+    for (size_t j = 0; j < m; j++)
+    {
+      const double abs_x_lb = std::abs(X[i][j].lower());
+      const double abs_x_ub = std::abs(X[i][j].upper());
+
+      C[i][j] = Interval(std::min(abs_x_lb, abs_x_ub), std::max(abs_x_lb, abs_x_ub));
+    }
+  }
+  return C;
+}
+Interval matrixAbs(const Interval &x)
+{
+  double abs_x_lb = std::abs(x.lower());
+  double abs_x_ub = std::abs(x.upper());
+
+  return Interval(std::min(abs_x_lb, abs_x_ub), std::max(abs_x_lb, abs_x_ub));
+}
+
 IntervalMatrix elementwiseAdd(const IntervalMatrix &X, const IntervalMatrix &Y)
 {
   size_t x_rows = X.size(), x_cols = X[0].size();
@@ -91,23 +215,31 @@ IntervalMatrix elementwiseAdd(const IntervalMatrix &X, const IntervalMatrix &Y)
 IntervalMatrix matrixAddBias(const IntervalMatrix &A, const IntervalMatrix &B)
 {
   size_t n = A.size(), m = A[0].size();
-  if (n == 0 || A[0].size() == 0) // checking empty matrix
+  if (n == 0 || m == 0) // checking empty matrix
   {
     throw std::invalid_argument("Input matrix is empty.");
   }
-  if (B.size() != 1) // bias must be 1 dimensional
+  if (B.size() == 0) // bias must not have 0 rows
   {
-    throw std::invalid_argument("Bias must be one dimensional");
+    throw std::invalid_argument("Bias has no rows");
   }
   if (B[0].size() != m) // bias must be length of matrix row
   {
     throw std::invalid_argument("Bias must be length of matrix row");
   }
+  if (B.size() > 1)
+  {
+    if (n == B.size() && m == B[0].size())
+    {
+      return elementwiseAdd(A, B);
+    }
+    else
+    {
+      throw std::invalid_argument("Bias has wrong shape for elementwise addition and is not 1 dimensional for bias addition.");
+    }
+  }
 
   IntervalMatrix C(n, std::vector<Interval>(m, Interval(0.0, 0.0)));
-  // for (size_t i = 0; i < n; ++i)
-  //   for (size_t j = 0; j < m; ++j)
-  //     C[i][j] += A[i][j] + B[0][j];
 
   constexpr size_t VF = 4; // or 8, 16 depending on your arch
   for (size_t i = 0; i < n; ++i)
@@ -126,6 +258,78 @@ IntervalMatrix matrixAddBias(const IntervalMatrix &A, const IntervalMatrix &B)
     for (; j < m; ++j)
     {
       C[i][j] += A[i][j] + B[0][j];
+    }
+  }
+  return C;
+}
+IntervalMatrix matrixAddBias(const IntervalMatrix &A, const Interval &x)
+{
+  size_t n = A.size(), m = A[0].size();
+  if (n == 0 || m == 0) // checking empty matrix
+  {
+    throw std::invalid_argument("Input matrix is empty.");
+  }
+
+  IntervalMatrix C(n, std::vector<Interval>(m, Interval(0.0, 0.0)));
+
+  constexpr size_t VF = 4; // or 8, 16 depending on your arch
+  for (size_t i = 0; i < n; ++i)
+  {
+    size_t j = 0;
+    // process full blocks
+    for (; j + VF <= m; j += VF)
+    {
+      // Load blocks
+      for (size_t k = 0; k < VF; ++k)
+      {
+        C[i][j + k] += A[i][j + k] + x;
+      }
+    }
+    // tail
+    for (; j < m; ++j)
+    {
+      C[i][j] += A[i][j] + x;
+    }
+  }
+  return C;
+}
+
+IntervalMatrix matrixMatrixSub(const IntervalMatrix &A, const IntervalMatrix &B)
+{
+  size_t a_rows = A.size(), a_cols = A[0].size();
+  size_t b_rows = B.size(), b_cols = B[0].size();
+  if (a_rows == 0 || a_cols == 0 || b_rows == 0 || b_cols == 0) // checking empty matrix
+  {
+    throw std::invalid_argument("Input contains at least one empty matrix.");
+  }
+  if (a_cols != b_cols)
+  {
+    throw std::invalid_argument("Matrices must have same column numbers");
+  }
+  if (b_rows > a_rows)
+  {
+    throw std::invalid_argument("Matrix b must have equal or less rows than matrix a");
+  }
+
+  IntervalMatrix C(a_rows, std::vector<Interval>(a_cols, Interval(0.0, 0.0)));
+
+  constexpr size_t VF = 4; // or 8, 16 depending on your arch
+  for (size_t i = 0; i < a_rows; ++i)
+  {
+    size_t j = 0, b_i = i % b_rows;
+    // process full blocks
+    for (; j + VF <= a_cols; j += VF)
+    {
+      // Load blocks
+      for (size_t k = 0; k < VF; ++k)
+      {
+        C[i][j + k] += A[i][j + k] - B[b_i][j + k];
+      }
+    }
+    // tail
+    for (; j < a_cols; ++j)
+    {
+      C[i][j] += A[i][j] - B[b_i][j];
     }
   }
   return C;
@@ -154,60 +358,70 @@ IntervalMatrix relu(const IntervalMatrix &A)
   return C;
 }
 
-IntervalMatrix reluTwo(const IntervalMatrix &X, const IntervalMatrix &Y)
+IntervalMatrix max(const IntervalMatrix &X, const IntervalMatrix &Y)
 {
   size_t x_rows = X.size(), x_cols = X[0].size();
   size_t y_rows = Y.size(), y_cols = Y[0].size();
+  size_t rows = std::max(x_rows, y_rows);
+  size_t cols = std::max(x_cols, y_cols);
   if (x_rows == 0 || y_rows == 0) // checking empty matrices
   {
     throw std::invalid_argument("Input matrix is empty.");
   }
 
-  IntervalMatrix C(x_rows, std::vector<Interval>(x_cols, Interval(0.0, 0.0)));
+  IntervalMatrix C(rows, std::vector<Interval>(cols, Interval(0.0, 0.0)));
 
   // Helper function to safe repetetive code/actions
   auto relu_helper = [](const Interval &a, const Interval &b)
   {
-    auto lba = std::max(0.0, a.lower());
-    auto uba = std::max(0.0, a.upper());
-    auto lbb = std::max(0.0, b.lower());
-    auto ubb = std::max(0.0, b.upper());
-    return Interval(std::max(lba, lbb), std::max(uba, ubb));
+    auto lb = std::max(a.lower(), b.lower());
+    auto ub = std::max(a.upper(), b.upper());
+    return Interval(lb, ub);
   };
 
-  // Case 1: Y is an 1x1 scalar
-  if (y_rows == 1 && y_cols == 1)
-  { // scalar
-    auto b = Y[0][0];
-    for (size_t i = 0; i < x_rows; i++)
-      for (size_t j = 0; j < x_cols; j++)
-        C[i][j] = relu_helper(X[i][j], b);
-    return C;
-  }
-  // Case 2: Y is a vector
-  else if (y_rows == 1 && y_cols == x_cols) // broadcasting row vector
-  {
-    for (size_t i = 0; i < x_rows; i++)
-      for (size_t j = 0; j < x_cols; j++)
-        C[i][j] = relu_helper(X[i][j], Y[0][j]); // always accessing Y[0] (vector)
-  }
-  else if (x_rows == y_rows && x_cols == y_cols)
-  {
-    for (size_t i = 0; i < x_rows; ++i)
-      for (size_t j = 0; j < x_cols; ++j)
-        C[i][j] = relu_helper(X[i][j], Y[i][j]);
-  }
-  else
-  {
-    throw std::invalid_argument("Incompatable shapes for reluTwo().");
-  }
+  for (size_t i = 0; i < rows; i++)
+    for (size_t j = 0; j < cols; j++)
+      C[i][j] = relu_helper(X[i % x_rows][j % x_cols], Y[i % y_rows][j % y_cols]);
 
   return C;
 }
 
-IntervalMatrix reluTwo(const IntervalMatrix &X, const Interval &y)
+IntervalMatrix max(const IntervalMatrix &X, const Interval &y)
 {
-  return reluTwo(X, IntervalMatrix(1, std::vector<Interval>(1, y)));
+  return max(X, IntervalMatrix(1, std::vector<Interval>(1, y)));
+}
+
+IntervalMatrix min(const IntervalMatrix &X, const IntervalMatrix &Y)
+{
+  size_t x_rows = X.size(), x_cols = X[0].size();
+  size_t y_rows = Y.size(), y_cols = Y[0].size();
+  size_t rows = std::max(x_rows, y_rows);
+  size_t cols = std::max(x_cols, y_cols);
+  if (x_rows == 0 || y_rows == 0) // checking empty matrices
+  {
+    throw std::invalid_argument("Input matrix is empty.");
+  }
+
+  IntervalMatrix C(rows, std::vector<Interval>(cols, Interval(0.0, 0.0)));
+
+  // Helper function to safe repetetive code/actions
+  auto relu_helper = [](const Interval &a, const Interval &b)
+  {
+    auto lb = std::min(a.lower(), b.lower());
+    auto ub = std::min(a.upper(), b.upper());
+    return Interval(lb, ub);
+  };
+
+  for (size_t i = 0; i < rows; i++)
+    for (size_t j = 0; j < cols; j++)
+      C[i][j] = relu_helper(X[i % x_rows][j % x_cols], Y[i % y_rows][j % y_cols]);
+
+  return C;
+}
+
+IntervalMatrix min(const IntervalMatrix &X, const Interval &y)
+{
+  return min(X, IntervalMatrix(1, std::vector<Interval>(1, y)));
 }
 
 IntervalMatrix sigmoid(IntervalMatrix &A)
@@ -332,11 +546,11 @@ IntervalMatrix transposeIntervalMatrix(const IntervalMatrix &M)
 {
   size_t n = M.size(), m = M[0].size();
 
-  if (n == 0 || m == 0 || n != m)
+  if (n == 0 || m == 0)
   {
-    throw std::invalid_argument("Wrong Matrix dimension, either rows != cols, or empty.");
+    throw std::invalid_argument("Wrong Matrix dimension, either rows or cols is empty.");
   }
-  IntervalMatrix C(n, std::vector<Interval>(m, Interval(0.0, 0.0)));
+  IntervalMatrix C(m, std::vector<Interval>(n, Interval(0.0, 0.0)));
 
   for (size_t i = 0; i < n; i++)
   {
@@ -396,16 +610,27 @@ NB_MODULE(ffi_module, m)
   m.def("add", &add, "Add two intervals");
   m.def("mult", &mult, "Multiplies two numbers"); //, nb::arg("a"), nb::arg("b"));
   m.def("relu", &relu, "Relu function for an interval");
-  // m.def("reluTwo", &reluTwo, "Relu function for an intervalMatrix x (intervalMatrix/vector/scalar)"),
+  // m.def("max", &max, "Relu function for an intervalMatrix x (intervalMatrix/vector/scalar)"),
   // nb::arg("x"), nb::arg("y");
-  m.def("reluTwo", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const IntervalMatrix &)>(&reluTwo));
-  m.def("reluTwo", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const Interval &)>(&reluTwo));
+  m.def("max", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const IntervalMatrix &)>(&max));
+  m.def("max", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const Interval &)>(&max));
+  m.def("min", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const IntervalMatrix &)>(&min));
+  m.def("min", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const Interval &)>(&min));
   m.def("sigmoid", &sigmoid, "Sigmoid function for an interval");
   m.def("conv2D", &conv2D, "Convolutional 2D function for an interval matrix",
         nb::arg("input"), nb::arg("kernel"), nb::arg("stride") = 1, nb::arg("padding") = 0);
   m.def("toIntervalVal", &toIntervalVal, "Converts double to interval");
   m.def("toIntervalValRange", &toIntervalValRange, "Converts double to interval, with second range input");
-  m.def("matrixMult", &matrixMult, "Multiplies two matrices together");          //, nb::arg("a"), nb::arg("b"));
-  m.def("matrixAddBias", &matrixAddBias, "Adds Bias to matrix");                 // arg::Matrix, arg::vector (bias)
-  m.def("checkValid", &checkValid, "Checks if first Interval is within second"); // arg::Matrix, arg::vector (bias)
+  m.def("matrixMult", &matrixMult, "Multiplies two matrices together"); //, nb::arg("a"), nb::arg("b"));
+  m.def("matrixDiv", &matrixDiv, "Divides two matrices by each other (elementwise division)");
+  m.def("matrixAddBias", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const IntervalMatrix &)>(&matrixAddBias), "Adds Bias to matrix"); // arg::Matrix, arg::vector (bias)
+  m.def("matrixAddBias", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const Interval &)>(&matrixAddBias), "Adds Bias to matrix");       // arg::Matrix, arg::vector (bias)
+  m.def("matrixMultElementwise", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const IntervalMatrix &)>(&matrixMultElementwise));
+  m.def("matrixMultElementwise", static_cast<IntervalMatrix (*)(const IntervalMatrix &, const Interval &)>(&matrixMultElementwise));
+  m.def("matrixPow", &matrixPow, "Matrix power function, takes matrix and single value");
+  m.def("matrixAbs", static_cast<IntervalMatrix (*)(const IntervalMatrix &)>(&matrixAbs));
+  m.def("matrixAbs", static_cast<Interval (*)(const Interval &)>(&matrixAbs));
+  m.def("matrixMatrixSub", &matrixMatrixSub, "Subtracting function for two matrices");
+  m.def("checkValid", &checkValid, "Checks if first Interval is within second");
+  m.def("transposeIntervalMatrix", &transposeIntervalMatrix, "Transpose matrix");
 }
