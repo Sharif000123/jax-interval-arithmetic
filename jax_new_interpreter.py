@@ -1,38 +1,29 @@
-import os
+import jax.numpy as jnp
+from tqdm import tqdm
+from jax._src.util import safe_map
+from jax.extend import core
+from jax import lax
+from functools import wraps
+from mpmath import iv
+import jax.experimental
+import numpy as np
 import sys
+from jax import config
+import jax
+import os
+os.environ['JAX_ENABLE_X64'] = 'True'
+config.update("jax_enable_x64", True)
+
 os.add_dll_directory(r"C:\msys64\ucrt64\bin")  # needed for Windows
 
 
-sys.path.append(r"D:\Work\ML Stuff\my_extension\build")
+sys.path.append(r"D:\Work\jax-interval-arithmetic\build")
 import ffi_module  # type: ignore
-import jax.experimental
-from mpmath import iv
-from functools import wraps
 
-from jax import lax
-from jax.extend import core
-from jax._src.util import safe_map
-
-from tqdm import tqdm
-
-import jax.numpy as jnp
-import numpy as np
-
-import jax
-
-# for intervall
 
 # Add the folder containing runtime dependencies first
 sys.path.append(os.path.dirname(__file__))
 
-# for direct access to the compiled module in build folder
-
-
-# TODO: Move all for-loops to C++ for parallelization
-
-
-# from jax import jit
-# import numpy as np
 
 # Configurations mpmath
 iv.dps = 15
@@ -42,11 +33,6 @@ iv.pretty = True
 def f(x):
 
     return x @ x
-
-# def interval_exp(x, **kwargs):
-
-#     print("Interval Exp:", x)
-#     return iv.exp(jnp.float32(x))
 
 
 def interval_add(x, y):
@@ -66,44 +52,22 @@ def interval_martix_sub(x, y):
 
 
 def integer_interval_pow(x, y):
-
     # print("interval_add x :", x , " y ", y)
-
     return ffi_module.matrixPow(x, y)
 
+
 def interval_abs(x):
-
     # print("interval_abs x :", x)
-
     return ffi_module.matrixAbs(x)
-
-# @jax.jit
 
 
 def interval_mult_elementwise(x, y, **kwargs):
-    # print("elementwise mult:")
-    ''' print(
-        f"x dimensions: {ffi_module.rows(x)}x{ffi_module.cols(x)}, y dimensions: {ffi_module.rows(y)}x{ffi_module.cols(y)}")
-   
-    n = ffi_module.rows(x)
-    m = ffi_module.cols(x)
-    if ffi_module.rows(y) != n or ffi_module.cols(y) != m:
-        raise ValueError(f"Dimension mismatch.")
-    rows = []
-    # newMatrix = iv.matrix(x.rows, x.cols) # creating new same size matrix
-    for i in range(n):
-        row = []
-        for j in range(m):
-            row.append(ffi_module.mult(x[i][j], y[i][j]))
-        rows.append(row)
-    return ffi_module.IntervalMatrix(rows)
-    '''
+    # print("interval_matrix_div:")  # , x, y)
     return ffi_module.matrixMultElementwise(x, y)
 
 
 def interval_matrix_mult(x, y, **kwargs):
-    # print("interval_matrix_mult:\nx:")#, x,"\ny:", y)
-    # print("---")
+
     x_cols = ffi_module.cols(x)
     y_rows = ffi_module.rows(y)
     if x_cols != y_rows:
@@ -111,23 +75,15 @@ def interval_matrix_mult(x, y, **kwargs):
             f"Matrix multiplication requires both matrices to have compatible dimensions.\nDimensions: x = {ffi_module.rows(x)}x{x_cols}, y = {y_rows}x{ffi_module.cols(y)}")
     return ffi_module.matrixMult(x, y)
 
+
 def interval_matrix_div(x, y, **kwargs):
-    # print("interval_matrix_mult:\nx:")#, x,"\ny:", y)
-    # print("---")
+    # print("interval_matrix_div:")  # , x, y)
     return ffi_module.matrixDiv(x, y)
 
 
 def interval_pow(x, y, **kwargs):
     # print("interval_pow:")  # , x, y)
     return x**y
-
-# def interval_matrix_inverse(x, **kwargs):
-#     return x**-1
-
-
-# def interval_matrix_transpose(x):
-#     print("interval_transpose:")  # , x)
-#     return ffi_module.matrixTranspose(x)
 
 
 def interval_min(x, **kwargs):
@@ -167,6 +123,7 @@ def interval_pjit(*args, **kwargs):
 
 
 def to_interval_matrix(array, half_range: float = 0.0):
+
     # Convert 2D array-like to ffi_module.IntervalMatrix of intervals [x-half_range, x+half_range]
     arr = np.asarray(array)
     if arr.ndim == 1:
@@ -176,56 +133,34 @@ def to_interval_matrix(array, half_range: float = 0.0):
     # Makes sure that intervals are same size
     for row in arr:
         hr = float(half_range)
-        rows.append([ffi_module.Interval(float(x) - hr, float(x) + hr)
-                    for x in row])
+        rows.append([ffi_module.Interval(
+            float(x) - hr - 1e-15 * max(abs(float(x)), 1.0),
+            float(x) + hr + 1e-15 * max(abs(float(x)), 1.0)
+        ) for x in row])
     return ffi_module.IntervalMatrix(rows)
 
 
 def scalar_to_interval(x, half_range: float = 0.0):
-    x = float(x)
-    return ffi_module.Interval(x - half_range, x + half_range)
-
-# to operate on IntervalMatrix objects
+    # defaults to 0.0 if half_range too small
+    if half_range < 1e-15:
+        return ffi_module.scalarToInterval(x)
+    return ffi_module.scalarToInterval(x, half_range)
 
 
 def elementwise_add(A, B, **kwargs):
-    # both are either ffi_module.IntervalMatrix or a matrix and a bias row
-    # n = ffi_module.rows(A)
-    # m = ffi_module.cols(A[0])
-    # rows = []
-    # # adding bias row
-    # for i in range(n):
-    #     row = []
-    #     for j in range(m):
-    #         a = ffi_module.get(A, i, j)
-    #         b = ffi_module.gets(B, i ,j) if (ffi_module.rows(B) == n and ffi_module.cols == m) else ffi_module.get(B, 0, j) #bias support for IntervalMatrix
-    #         row.append(ffi_module.add(a, b))
-    #     rows.append(row)
     return ffi_module.elementwiseAdd(A, B)
 
 
 def transpose_interval_matrix(M, **kwargs):
-    
-    # print("MmMM     ", M)
-    # cols = ffi_module.cols(M)
-    # rownum = ffi_module.rows(M)
-    # rows = []
-    # for i in range(rownum):
-    #     row = []
-    #     for j in range(cols):
-    #         row.append(ffi_module.cols(M, i, j))
-    #     rows.append(row)
     return ffi_module.transposeIntervalMatrix(M)
 
 
 def p_jitting(*args, jaxpr, **kwargs):
-    # def eval_jaxpr(jaxpr, consts, *args, half_range: float = 0.0):
-
     return eval_jaxpr(jaxpr.jaxpr, jaxpr.literals, *args)
 
 
 def broadcast_in_dim(operandArr, *, shape, broadcast_dimensions, **kwargs):
-    # def eval_jaxpr(jaxpr, consts, *args, half_range: float = 0.0):
+
     output_shape = tuple(int(s) for s in shape)
     if len(output_shape) == 1:
         output_rows, output_cols = 1, output_shape[0]
@@ -240,15 +175,7 @@ def broadcast_in_dim(operandArr, *, shape, broadcast_dimensions, **kwargs):
         rows = [[operandArr for _ in range(output_cols)]
                 for _ in range(output_rows)]
         return ffi_module.IntervalMatrix(rows)
-
-    #     print(f"x dimensions: {ffi_module.rows(x)}x{ffi_module.cols(x)}, y dimensions: {ffi_module.rows(y)}x{ffi_module.cols(y)}")
-
-    # print(shape, "broad dim: ", broadcast_dimensions, "operan " , ffi_module.rows(operandArr), "cols   ", ffi_module.cols(operandArr))
-    # # If operand = scalar
-    # rows = [[operandArr for _ in range(output_cols)] for _ in range(output_rows)]
     return operandArr
-
-    return
 
 
 def custom_jvp_call(*args, **kwargs):
@@ -273,8 +200,6 @@ def custom_jvp_call(*args, **kwargs):
     # recurse into interpreter to evaluate inner jaxpr with same args (eval_jaxpr)
     return eval_jaxpr(inner_jaxpr, inner_consts, *args)
 
-# integerpowery=-1 = x/1
-
 
 interval_primitives = {
     # lax.exp_p: interval_exp,
@@ -291,7 +216,8 @@ interval_primitives = {
     lax.sub_p: interval_martix_sub,
     lax.integer_pow_p: integer_interval_pow,
     lax.abs_p: interval_abs,
-    jax.experimental.pjit.pjit_p: p_jitting,
+    # jax.experimental.pjit.pjit_p: p_jitting,
+    # jax.jit: p_jitting,
     jax.extend.core.primitives.broadcast_in_dim_p: broadcast_in_dim,
     jax.extend.core.primitives.custom_jvp_call_p: custom_jvp_call,
     # implement pjit, as recursive call (weil pjit verschachtelt weitere Jaxprs)
@@ -300,9 +226,15 @@ interval_primitives = {
 
 }
 
-# closed_jaxpr = jax.make_jaxpr(f)(jnp.ones(5))
-# print(closed_jaxpr.jaxpr)
-# print(closed_jaxpr.literals)
+# Try to add pjit_p; fall back to jax.jit if wrong jax version installed
+try:
+    # old jax version
+    interval_primitives[jax.experimental.pjit.pjit_p] = p_jitting
+except (AttributeError, ImportError):
+    try:
+        interval_primitives[jax.jit] = p_jitting  # new jax version
+    except (AttributeError, ImportError):
+        Exception("Could not add pjit to interval_primitives.")
 
 
 # this is a simple Jaxpr interpreter that evaluates a Jaxpr by interpreting it directly.
@@ -323,10 +255,6 @@ def eval_jaxpr(jaxpr, consts, *args, half_range: float = 0.0):
         if type(var) is core.Literal:  # check if var is a literal, a literal is constant value
             v = var.val
             return convert(v)
-            # try:
-            #     return scalar_to_interval(v, half_range)
-            # except Exception:
-            #     return to_interval_matrix(np.asarray(v), half_range)
         return env[var]
 
     # stores computed results in environment
@@ -336,14 +264,6 @@ def eval_jaxpr(jaxpr, consts, *args, half_range: float = 0.0):
             val = convert(val)
         env[var] = val
 
-    # Convert inputs to interval matrices
-    # interval_args = [iv.matrix(arg) for arg in args]
-    # if len(interval_args) != len(jaxpr.invars):
-    #     raise ValueError(f"Number of inputs ({len(interval_args)}) does not match number of JAXPR invars ({len(jaxpr.invars)})")
-
-    # binding args and consts to environment
-    # print(len(jaxpr.invars))
-    # print(len(args))
     # safe_map applies write func to each element in jaxpr.invars & args, jaxpr.invars are input variables, and args. The difference is that args are the values of the input variables, while jaxpr.invars are the variables that hold the input variables.
     safe_map(write, jaxpr.invars, args)
     # interval_consts = [convert(const) for const in consts]
@@ -376,24 +296,3 @@ def eval_jaxpr(jaxpr, consts, *args, half_range: float = 0.0):
     # read final result of Jaxpr from env.
     # read the output variables from the environment and return them as a list
     return safe_map(read, jaxpr.outvars)
-
-
-# func call
-# closed_jaxpr = jax.make_jaxpr(f)(jnp.ones((2,2)))
-# print("closed_jaxpr:")
-# print(closed_jaxpr)
-# print("closed_jaxpr.jaxpr:")
-# print(closed_jaxpr.jaxpr)
-# print("closed_jaxpr.literals:")
-# print(closed_jaxpr.literals)
-'''
-evalJaxpr = eval_jaxpr(closed_jaxpr.jaxpr, closed_jaxpr.literals, jnp.array([[3.,2.],[2.,3.,]]))
-
-
-print("evalJaxpr:")
-print(evalJaxpr)
-print("evalJaxpr[0]:")
-print(evalJaxpr[0])
-
-'''
-# print(eval_jaxpr(closed_jaxpr.jaxpr, closed_jaxpr.literals, jnp.ones(5)))

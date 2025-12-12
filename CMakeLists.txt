@@ -8,10 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 
 # --- Boost interval (header-only)
-include_directories("D:/Work/ML Stuff/boost_1_88_0")
+include_directories("D:/Work/jax-interval-arithmetic/boost_1_88_0")
 
 # --- Add Nanobind from source
-add_subdirectory("D:/Work/ML Stuff/nanobind" nanobind_build)
+add_subdirectory("D:/Work/jax-interval-arithmetic/nanobind" nanobind_build)
 
 # --- Build Python extension module
 nanobind_add_module(ffi_module ffi.cpp)

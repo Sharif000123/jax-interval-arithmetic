@@ -22,9 +22,7 @@ os.add_dll_directory(r"C:\msys64\ucrt64\bin") # needed for Windows
 sys.path.append(os.path.dirname(__file__))
 
 # for direct access to the compiled module in build folder
-sys.path.append(r"D:\Work\ML Stuff\my_extension\build")
-# import ffi_module  # type: ignore
-sys.path.append(r"D:\Work\ML Stuff")
+sys.path.append(r"D:\Work\jax-interval-arithmetic")
 import jax_new_interpreter
 
 

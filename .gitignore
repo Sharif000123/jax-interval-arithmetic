@@ -1,10 +1,10 @@
 nanobind/*
-xla/*
+Outdated_Files/xla/*
+Outdated_Files/jax/*
 __pycache__/*
 boost_1_88_0/*
-build/*
 data/*
-jax/*
+build/*
 output/*
-my_extension/build/*
-my_extension/output/*
+Outdated_Files/build/*
+Outdated_Files/output/*
